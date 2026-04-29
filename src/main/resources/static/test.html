@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>文献上传测试</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        input, textarea, select { display: block; margin: 10px 0; padding: 8px; width: 300px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        pre { background: #f4f4f4; padding: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+<h2>📄 文献上传测试</h2>
+
+<input type="text" id="title" placeholder="标题" value="测试文献标题">
+<input type="text" id="authors" placeholder="作者" value="张三,李四">
+<textarea id="abstractText" placeholder="摘要" rows="3">这是测试摘要内容</textarea>
+<input type="number" id="publishYear" placeholder="发表年份" value="2024">
+<input type="text" id="journal" placeholder="期刊" value="测试期刊">
+<input type="text" id="keywords" placeholder="关键词" value="测试,文献">
+<input type="text" id="doi" placeholder="DOI" value="10.1234/test.001">
+<select id="category">
+    <option value="计算机科学">计算机科学</option>
+    <option value="软件工程" selected>软件工程</option>
+    <option value="人工智能">人工智能</option>
+</select>
+
+<button onclick="uploadLiterature()">📤 上传文献</button>
+<button onclick="getMyContributions()">📋 查看我的贡献</button>
+<button onclick="getStats()">📊 查看统计</button>
+
+<h3>返回结果：</h3>
+<pre id="result">等待操作...</pre>
+
+<script>
+    async function uploadLiterature() {
+        const data = {
+            title: document.getElementById('title').value,
+            authors: document.getElementById('authors').value,
+            abstractText: document.getElementById('abstractText').value,
+            publishYear: parseInt(document.getElementById('publishYear').value),
+            journal: document.getElementById('journal').value,
+            keywords: document.getElementById('keywords').value,
+            doi: document.getElementById('doi').value,
+            category: document.getElementById('category').value
+        };
+
+        try {
+            const response = await fetch('/api/contributor/literature', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            document.getElementById('result').innerText = JSON.stringify(result, null, 2);
+        } catch (error) {
+            document.getElementById('result').innerText = '错误: ' + error.message;
+        }
+    }
+
+    async function getMyContributions() {
+        try {
+            const response = await fetch('/api/contributor/my-contributions?page=1&size=10');
+            const result = await response.json();
+            document.getElementById('result').innerText = JSON.stringify(result, null, 2);
+        } catch (error) {
+            document.getElementById('result').innerText = '错误: ' + error.message;
+        }
+    }
+
+    async function getStats() {
+        try {
+            const response = await fetch('/api/contributor/stats');
+            const result = await response.json();
+            document.getElementById('result').innerText = JSON.stringify(result, null, 2);
+        } catch (error) {
+            document.getElementById('result').innerText = '错误: ' + error.message;
+        }
+    }
+</script>
+</body>
+</html>

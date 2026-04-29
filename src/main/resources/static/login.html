@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 智能文献检索系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .login-header {
+            background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .login-header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .login-body {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 3px rgba(26,115,232,0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #e53935 0%, #b71c1c 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(229,57,53,0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .switch-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+        }
+
+        .switch-link a {
+            color: #1a73e8;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .switch-link a:hover {
+            text-decoration: underline;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            z-index: 1100;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="login-card">
+        <div class="login-header">
+            <h1>📚 智能文献检索系统</h1>
+            <p>基于 Elasticsearch 的全文搜索</p>
+        </div>
+        <div class="login-body">
+            <!-- 登录表单 -->
+            <div id="loginForm">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="loginUsername" placeholder="请输入用户名">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="loginPassword" placeholder="请输入密码">
+                </div>
+                <button class="btn" onclick="doLogin()">登 录</button>
+                <div class="switch-link">
+                    还没有账号？<a onclick="showRegister()">立即注册</a>
+                </div>
+            </div>
+
+            <!-- 注册表单（初始隐藏） -->
+            <div id="registerForm" style="display: none;">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="regUsername" placeholder="请输入用户名">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="regPassword" placeholder="请输入密码">
+                </div>
+                <div class="form-group">
+                    <label>昵称</label>
+                    <input type="text" id="regNickname" placeholder="请输入昵称（可选）">
+                </div>
+                <div class="form-group">
+                    <label>邮箱</label>
+                    <input type="email" id="regEmail" placeholder="请输入邮箱（可选）">
+                </div>
+                <button class="btn" onclick="doRegister()">注 册</button>
+                <div class="switch-link">
+                    已有账号？<a onclick="showLogin()">立即登录</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showToast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = 'slideIn 0.3s ease reverse';
+            setTimeout(() => toast.remove(), 300);
+        }, 2000);
+    }
+
+    async function doLogin() {
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+
+        if (!username || !password) {
+            showToast('请填写用户名和密码');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/user/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, password})
+            });
+            const result = await response.json();
+
+            if (result.code === 200) {
+                // 保存用户信息和 token
+                localStorage.setItem('token', result.data.token);
+                localStorage.setItem('user', JSON.stringify(result.data));
+                showToast('登录成功！');
+                // 跳转到主页
+                setTimeout(() => {
+                    window.location.href = '/index.html';
+                }, 500);
+            } else {
+                showToast(result.message || '登录失败');
+            }
+        } catch (error) {
+            console.error('登录失败:', error);
+            showToast('登录失败，请重试');
+        }
+    }
+
+    async function doRegister() {
+        const username = document.getElementById('regUsername').value;
+        const password = document.getElementById('regPassword').value;
+        const nickname = document.getElementById('regNickname').value;
+        const email = document.getElementById('regEmail').value;
+
+        if (!username || !password) {
+            showToast('请填写用户名和密码');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/user/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, password, nickname, email})
+            });
+            const result = await response.json();
+
+            if (result.code === 200) {
+                // 保存用户信息和 token
+                localStorage.setItem('token', result.data.token);
+                localStorage.setItem('user', JSON.stringify(result.data));
+                showToast('注册成功！');
+                // 跳转到主页
+                setTimeout(() => {
+                    window.location.href = '/index.html';
+                }, 500);
+            } else {
+                showToast(result.message || '注册失败');
+            }
+        } catch (error) {
+            console.error('注册失败:', error);
+            showToast('注册失败，请重试');
+        }
+    }
+
+    function showRegister() {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'block';
+    }
+
+    function showLogin() {
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('loginForm').style.display = 'block';
+    }
+</script>
+</body>
+</html>

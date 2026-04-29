@@ -1,0 +1,139 @@
+### 测试服务是否正常
+GET http://localhost:8080/api/search/test
+
+### 批量同步到 ES
+POST http://localhost:8080/api/search/sync-all
+
+### 搜索建议/自动补全
+GET http://localhost:8080/api/search/suggest?prefix=深度
+
+### 搜索文献 - 深度学习
+POST http://localhost:8080/api/literature/search
+Content-Type: application/json
+
+{
+  "keyword": "深度学习",
+  "page": 1,
+  "size": 10
+}
+
+### 搜索文献 - SpringBoot
+POST http://localhost:8080/api/literature/search
+Content-Type: application/json
+
+{
+  "keyword": "SpringBoot",
+  "page": 1,
+  "size": 10
+}
+
+### 搜索文献 - 区块链
+POST http://localhost:8080/api/literature/search
+Content-Type: application/json
+
+{
+  "keyword": "区块链",
+  "page": 1,
+  "size": 10
+}
+
+### 搜索文献 - 带分页
+POST http://localhost:8080/api/literature/search
+Content-Type: application/json
+
+{
+  "keyword": "技术",
+  "page": 1,
+  "size": 5
+}
+
+### 获取文献详情
+GET http://localhost:8080/api/literature/1
+
+### 直接测试 ES - 深度学习
+GET http://localhost:9200/literature/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "multi_match": {
+      "query": "深度学习",
+      "fields": ["title^3", "abstractText", "keywords", "authors"]
+    }
+  }
+}
+
+### 直接测试 ES - 查看所有数据
+GET http://localhost:9200/literature/_search
+Content-Type: application/json
+
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+### 直接测试 ES - 测试建议补全
+GET http://localhost:9200/literature/_search
+Content-Type: application/json
+
+{
+  "suggest": {
+    "title_suggest": {
+      "prefix": "深度",
+      "completion": {
+        "field": "suggest",
+        "size": 10,
+        "skip_duplicates": true
+      }
+    }
+  }
+}
+
+### 查看 ES 索引映射
+GET http://localhost:9200/literature/_mapping
+
+### 查看 ES 索引设置
+GET http://localhost:9200/literature/_settings
+
+### 删除 ES 索引（慎用）
+DELETE http://localhost:9200/literature
+
+
+### 从 ES 中删除单条文献
+DELETE http://localhost:8080/api/search/es/1
+
+### 从 ES 中批量删除文献
+DELETE http://localhost:8080/api/search/es/batch
+Content-Type: application/json
+
+[1, 2, 3]
+
+### 同时删除 MySQL 和 ES 中的文献
+DELETE http://localhost:8080/api/literature/1
+
+### 批量删除 MySQL 和 ES 中的文献
+DELETE http://localhost:8080/api/literature/batch
+Content-Type: application/json
+
+[1, 2, 3]
+
+
+### 创建 ES 索引（需要配合 mapping）
+PUT http://localhost:9200/literature
+Content-Type: application/json
+
+{
+  "mappings": {
+    "properties": {
+      "title": {
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
+      },
+      "suggest": {
+        "type": "completion"
+      }
+    }
+  }
+}

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文献审核 - 智能文献检索系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .header h1 { font-size: 2rem; margin-bottom: 10px; }
+        .card { background: white; border-radius: 20px; padding: 30px; margin-bottom: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .user-info-bar { display: flex; justify-content: flex-end; align-items: center; gap: 15px; margin-bottom: 20px; color: white; }
+        .btn-back { background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+        .literature-item { padding: 20px; border: 1px solid #eee; border-radius: 12px; margin-bottom: 15px; background: #fafafa; }
+        .literature-title { font-size: 1.2rem; font-weight: 600; color: #333; margin-bottom: 10px; }
+        .literature-meta { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 12px; font-size: 0.85rem; }
+        .meta-item { background: #f0f0f0; padding: 4px 12px; border-radius: 20px; color: #666; }
+        .status-pending { background: #fff3e0; color: #f5a623; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; display: inline-block; }
+        .review-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-approve { background: #11998e; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; }
+        .btn-reject { background: #ff4757; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; }
+        .reject-reason { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; display: none; }
+        .empty { text-align: center; padding: 40px; color: #999; }
+        .toast { position: fixed; bottom: 30px; right: 30px; background: #333; color: white; padding: 12px 24px; border-radius: 10px; z-index: 1100; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .tab { padding: 8px 20px; cursor: pointer; border-radius: 8px; background: #f0f0f0; }
+        .tab.active { background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%); color: white; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="user-info-bar">
+        <span id="userInfo" style="color: white;"></span>
+        <button class="btn-back" onclick="goBack()">返回首页</button>
+        <button class="btn-back" onclick="logout()">退出登录</button>
+    </div>
+
+    <div class="header">
+        <h1>📋 文献审核</h1>
+        <p>审核文献经略专员提交的文献</p>
+    </div>
+
+    <div class="card">
+        <div class="tabs">
+            <div class="tab active" onclick="loadPending()">待审核</div>
+            <div class="tab" onclick="loadReviewed()">已审核</div>
+        </div>
+        <div id="results">
+            <div class="empty">加载中...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentTab = 'pending';
+
+    function getToken() { return localStorage.getItem('token'); }
+    function getUser() { const userStr = localStorage.getItem('user'); return userStr ? JSON.parse(userStr) : null; }
+
+    function checkAdmin() {
+        const user = getUser();
+        if (!user || user.role !== 2) {
+            alert('权限不足，仅管理员可访问');
+            window.location.href = '/index.html';
+            return false;
+        }
+        return true;
+    }
+
+    function displayUserInfo() {
+        const user = getUser();
+        if (user) {
+            const roleName = user.role === 0 ? '普通用户' : (user.role === 1 ? '文献经略专员' : '管理员');
+            document.getElementById('userInfo').textContent = `${user.nickname || user.username} (${roleName})`;
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login.html';
+    }
+
+    function goBack() { window.location.href = '/index.html'; }
+
+    function showToast(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+    }
+
+    function getStatusText(status) {
+        if (status === 0) return '<span class="status-pending">⏳ 待审核</span>';
+        if (status === 1) return '<span style="color: #11998e;">✅ 已通过</span>';
+        if (status === 2) return '<span style="color: #ff4757;">❌ 已驳回</span>';
+        return '未知';
+    }
+
+    async function loadPending() {
+        currentTab = 'pending';
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        event.target.classList.add('active');
+
+        const token = getToken();
+        if (!token) return;
+
+        try {
+            const response = await fetch('/api/literature/pending', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await response.json();
+            if (result.code === 200) {
+                renderList(result.data || [], 'pending');
+            } else {
+                showToast(result.message || '加载失败');
+            }
+        } catch (error) {
+            showToast('加载失败');
+        }
+    }
+
+    async function loadReviewed() {
+        currentTab = 'reviewed';
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        event.target.classList.add('active');
+
+        const token = getToken();
+        if (!token) return;
+
+        try {
+            const response = await fetch('/api/literature/search', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ page: 1, size: 100 })
+            });
+            const result = await response.json();
+            if (result.code === 200) {
+                let list = result.data?.list || [];
+                // 筛选已审核的（status != 0）
+                list = list.filter(item => item.status !== 0);
+                renderList(list, 'reviewed');
+            } else {
+                showToast(result.message || '加载失败');
+            }
+        } catch (error) {
+            showToast('加载失败');
+        }
+    }
+
+    function renderList(list, type) {
+        const container = document.getElementById('results');
+
+        if (!list || list.length === 0) {
+            container.innerHTML = '<div class="empty">📭 暂无文献</div>';
+            return;
+        }
+
+        container.innerHTML = list.map(item => `
+            <div class="literature-item" id="item_${item.id}">
+                <div class="literature-title">${escapeHtml(item.title)}</div>
+                <div class="literature-meta">
+                    <span class="meta-item">👤 ${escapeHtml(item.authors || '未知作者')}</span>
+                    <span class="meta-item">📅 ${item.publishYear || '未知年份'}</span>
+                    <span class="meta-item">📄 ${escapeHtml(item.journal || '未知期刊')}</span>
+                    <span class="meta-item">状态：${getStatusText(item.status)}</span>
+                </div>
+                ${item.abstractText ? `<div class="literature-abstract">📝 ${escapeHtml(item.abstractText.substring(0, 200))}</div>` : ''}
+                ${type === 'pending' ? `
+                    <div class="review-actions">
+                        <button class="btn-approve" onclick="approveLiterature(${item.id})">✅ 审核通过</button>
+                        <button class="btn-reject" onclick="showRejectReason(${item.id})">❌ 驳回</button>
+                    </div>
+                    <div id="rejectReason_${item.id}" class="reject-reason">
+                        <textarea id="reasonText_${item.id}" rows="2" placeholder="请输入驳回理由..."></textarea>
+                        <div style="margin-top: 10px;">
+                            <button class="btn-reject" onclick="rejectLiterature(${item.id})">确认驳回</button>
+                            <button class="btn-back" onclick="hideRejectReason(${item.id})">取消</button>
+                        </div>
+                    </div>
+                ` : (item.reviewRemark ? `<div style="margin-top: 10px; color: #ff4757;">驳回理由：${escapeHtml(item.reviewRemark)}</div>` : '')}
+            </div>
+        `).join('');
+    }
+
+    function showRejectReason(id) {
+        document.getElementById(`rejectReason_${id}`).style.display = 'block';
+    }
+
+    function hideRejectReason(id) {
+        document.getElementById(`rejectReason_${id}`).style.display = 'none';
+    }
+
+    async function approveLiterature(id) {
+        const token = getToken();
+        try {
+            const response = await fetch(`/api/literature/review/${id}?status=1`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await response.json();
+            if (result.code === 200) {
+                showToast('审核通过');
+                loadPending();
+            } else {
+                showToast(result.message || '操作失败');
+            }
+        } catch (error) {
+            showToast('操作失败');
+        }
+    }
+
+    async function rejectLiterature(id) {
+        const token = getToken();
+        const reason = document.getElementById(`reasonText_${id}`).value;
+        try {
+            const response = await fetch(`/api/literature/review/${id}?status=2&remark=${encodeURIComponent(reason)}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await response.json();
+            if (result.code === 200) {
+                showToast('已驳回');
+                loadPending();
+            } else {
+                showToast(result.message || '操作失败');
+            }
+        } catch (error) {
+            showToast('操作失败');
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    if (checkAdmin()) {
+        displayUserInfo();
+        loadPending();
+    }
+</script>
+</body>
+</html>

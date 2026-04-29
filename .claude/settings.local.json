@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd.exe *)",
+      "Bash(powershell.exe *)",
+      "Read(//c/Users/LENOVO/Desktop/**)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(java -version)"
+    ]
+  }
+}
